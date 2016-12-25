@@ -8,7 +8,10 @@ require_relative 'model'
 
 Plugin.create(:iij_coupon_checker) do
 
-  class IDNotFoundError < StandardError; end
+  @base_url = 'https://api.iijmio.jp/mobile/d/v1/authorization/'
+
+  class IDNotFoundError < StandardError;
+  end
 
   begin
     id = UserConfig['iij_developer_id']
@@ -24,19 +27,15 @@ Plugin.create(:iij_coupon_checker) do
 
 
   def auth
-    uri = URI.parse('https://api.iijmio.jp/mobile/d/v1/authorization/')
-    query = {
-        :response_type => 'token',
-        :client_id => @client_id,
-        :state => 'mikutter_iij_coupon_checker',
-        :redirect_uri => UserConfig['iij_redirect_uri'] || 'localhost'
-    }.to_hash
-    uri.query = URI.encode_www_form(query)
+    uri = @base_url +
+        "?response_type=token&client_id=#{@client_id}&state=mikutter_iij_coupon_checker&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
 
     Thread.new {
       Plugin.call(:open, uri)
+      # client = HTTPClient.new
+      # client.get(uri)
     }.next { |response|
-      Delayer::Deferred.fail(response) unless (response.nil? or response&.status == 200)
+      # Delayer::Deferred.fail(response) unless (response.nil? or response&.status == 200)
       # puts response
       # p response.status
       # p response.contenttype
