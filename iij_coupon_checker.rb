@@ -127,7 +127,7 @@ Plugin.create(:iij_coupon_checker) do
     # クーポンの取得
     # TODO: hddServiceCodeの扱いをどうするか要検討
     hdd = ''
-    switch_coupon(hdd ,@token)
+    switch_coupon(hdd, @token)
   end
 
 
