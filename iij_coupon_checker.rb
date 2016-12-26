@@ -47,18 +47,47 @@ Plugin.create(:iij_coupon_checker) do
   def check_coupon(token)
     Thread.new {
       client = HTTPClient.new
-      client.get_content(@coupon_url,
-                         'Content-Type' => 'application/json',
-                         'X-IIJmio-Developer' => @client_id,
-                         'X-IIJmio-Authorization' => token)
+      client.default_header = {
+          'Content-Type': 'application/json',
+          'X-IIJmio-Developer': @client_id,
+          'X-IIJmio-Authorization': token
+      }
+      client.get_content(@coupon_url)
     }.next { |response|
-      p response.status
       p response
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
       error err
 
       # TODO: トークン切れの場合はauthを実行する
+    }
+  end
+
+
+  def switch_coupon(hdo, switch)
+    Thread.new {
+      client = HTTPClient.new
+      data = {
+        'couponInfo': [{
+          'hdoInfo': [
+             {
+              'hdoServiceCode': hdo,
+              'couponUse': switch
+             }
+          ]
+        }]
+      }
+      client.default_header = {
+          'Content-Type': 'application/json',
+          'X-IIJmio-Developer': @client_id,
+          'X-IIJmio-Authorization': token
+      }
+      client.put(@coupon_url, data)
+    }.next { |response|
+      p response
+    }.trap { |err|
+      activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
+      error err
     }
   end
 
