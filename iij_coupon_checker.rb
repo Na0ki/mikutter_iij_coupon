@@ -57,7 +57,13 @@ Plugin.create(:iij_coupon_checker) do
       client.get_content(@coupon_url)
     }.next { |response|
       result = JSON.parse(response)
-      coupon_info(result)
+      coupon_info(result).each { |msg|
+        user = Mikutter::System::User.new(idname: 'iijmio_coupon',
+                                          name: 'Coupon Checker',
+                                          icon: Skin['icon.png'])
+        timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
+                                                                  description: msg)
+      }
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
       error err
@@ -83,7 +89,13 @@ Plugin.create(:iij_coupon_checker) do
       }
       client.put(@coupon_url, data)
     }.next { |response|
-      coupon_info(response)
+      coupon_info(response).each { |msg|
+        user = Mikutter::System::User.new(idname: 'iijmio_coupon',
+                                          name: 'Coupon Checker',
+                                          icon: Skin['icon.png'])
+        timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
+                                                                  description: msg)
+      }
     }.trap { |err|
       activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
       error err
@@ -93,25 +105,24 @@ Plugin.create(:iij_coupon_checker) do
 
   # クーポンの情報を整形してポストする
   # @param [JSON] data
+  # @return [Array] 整形済みの文字列を格納した配列
   def coupon_info(data)
+    messages = []
     data['couponInfo'].each { |d|
-      hdd = d.dig('hddServiceCode')
       hdo = d.dig('hdoInfo', 0, 'hdoServiceCode')
       regulation = d.dig('hdoInfo', 0, 'regulation')
       coupon_use = d.dig('hdoInfo', 0, 'couponUse')
       number = d.dig('hdoInfo', 0, 'number')
       volume = d.dig('hdoInfo', 0, 'coupon', 0, 'volume')
 
-      msg = "hddServiceCode: #{hdd}\nhdoServiceCode: #{hdo}\n電話番号: #{number}\n" +
+      msg = "hdoServiceCode: #{hdo}\n" +
+          "電話番号: #{number}\n" +
           "クーポン利用状況: #{coupon_use ? '使用中' : '未使用'}\n" +
           "規制状態: #{regulation ? '規制中' : '規制なし'}\n" +
-          "クーポン残量: #{volume} [MB]"
-      user = Mikutter::System::User.new(idname: 'iijmio_coupon',
-                                        name: 'Coupon Checker',
-                                        icon: Skin['icon.png'])
-      timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
-                                                                description: msg)
+          "SIM内クーポン残量: #{volume} [MB]"
+      messages.push(msg)
     }
+    messages
   end
 
 
