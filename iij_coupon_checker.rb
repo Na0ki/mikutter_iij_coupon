@@ -8,7 +8,6 @@ require_relative 'model'
 
 Plugin.create(:iij_coupon_checker) do
 
-  @auth_url = 'https://api.iijmio.jp/mobile/d/v1/authorization/'
   @coupon_url = 'https://api.iijmio.jp/mobile/d/v1/coupon/'
 
   class IDNotFoundError < StandardError;
@@ -28,7 +27,7 @@ Plugin.create(:iij_coupon_checker) do
 
 
   def auth
-    uri = @auth_url +
+    uri = 'https://api.iijmio.jp/mobile/d/v1/authorization/' +
         "?response_type=token&client_id=#{@client_id}&state=mikutter_iij_coupon_checker&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
 
     Thread.new {
@@ -113,6 +112,22 @@ Plugin.create(:iij_coupon_checker) do
     auth unless @token
     # クーポンの取得
     check_coupon(@token)
+  end
+
+
+  command(:switch_iij_coupon,
+          name: 'クーポンの使用を変更',
+          condition: lambda { |_| true },
+          visible: true,
+          role: :timeline
+  ) do |_|
+    @token = UserConfig['iij_access_token']
+    # トークンがなければ認証
+    auth unless @token
+    # クーポンの取得
+    # TODO: hddServiceCodeの扱いをどうするか要検討
+    hdd = ''
+    switch_coupon(hdd ,@token)
   end
 
 
