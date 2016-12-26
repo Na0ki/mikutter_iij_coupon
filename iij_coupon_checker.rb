@@ -8,7 +8,8 @@ require_relative 'model'
 
 Plugin.create(:iij_coupon_checker) do
 
-  @base_url = 'https://api.iijmio.jp/mobile/d/v1/authorization/'
+  @auth_url = 'https://api.iijmio.jp/mobile/d/v1/authorization/'
+  @coupon_url = 'https://api.iijmio.jp/mobile/d/v1/coupon/'
 
   class IDNotFoundError < StandardError;
   end
@@ -27,19 +28,14 @@ Plugin.create(:iij_coupon_checker) do
 
 
   def auth
-    uri = @base_url +
+    uri = @auth_url +
         "?response_type=token&client_id=#{@client_id}&state=mikutter_iij_coupon_checker&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
 
     Thread.new {
       Plugin.call(:open, uri)
-      # client = HTTPClient.new
-      # client.get(uri)
+      # FIXME: 認証部分を扱いやすいように改良する
     }.next { |response|
       # Delayer::Deferred.fail(response) unless (response.nil? or response&.status == 200)
-      # puts response
-      # p response.status
-      # p response.contenttype
-      # p response.body
       p response
     }.trap { |err|
       activity :iij_coupon_checker, "認証に失敗しました: #{err.to_s}"
@@ -48,14 +44,21 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
-  def check_coupon
+  def check_coupon(token)
     Thread.new {
-
-    }.next { |_|
-
+      client = HTTPClient.new
+      client.get_content(@coupon_url,
+                         'Content-Type' => 'application/json',
+                         'X-IIJmio-Developer' => @client_id,
+                         'X-IIJmio-Authorization' => token)
+    }.next { |response|
+      p response.status
+      p response
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
       error err
+
+      # TODO: トークン切れの場合はauthを実行する
     }
   end
 
@@ -66,7 +69,11 @@ Plugin.create(:iij_coupon_checker) do
           visible: true,
           role: :timeline
   ) do |_|
-    auth
+    @token = UserConfig['iij_access_token']
+    # トークンがなければ認証
+    auth unless @token
+    # クーポンの取得
+    check_coupon(@token)
   end
 
 
@@ -77,9 +84,18 @@ Plugin.create(:iij_coupon_checker) do
       input 'デベロッパID', :iij_developer_id
     end
 
+    settings('トークン') do
+      input 'アクセストークン', :iij_access_token
+    end
+
     settings('リダイレクトURI') do
       input 'URI', :iij_redirect_uri
     end
+  end
+
+
+  def inspect
+    "#{self.class.to_s}(client_id=#{@client_id}, token=#{@token})"
   end
 
 end
