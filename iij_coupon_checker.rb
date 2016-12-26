@@ -26,6 +26,7 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  # 認証
   def auth
     uri = 'https://api.iijmio.jp/mobile/d/v1/authorization/' +
         "?response_type=token&client_id=#{@client_id}&state=mikutter_iij_coupon_checker&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
@@ -43,6 +44,8 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  # クーポンの取得
+  # @param [String] token トークン
   def check_coupon(token)
     Thread.new {
       client = HTTPClient.new
@@ -64,6 +67,9 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  # クーポンのオン・オフの切り替え
+  # @param [String] hdo hdoServiceInfo
+  # @param [boolean] switch オン/オフ
   def switch_coupon(hdo, switch)
     Thread.new {
       client = HTTPClient.new
@@ -85,6 +91,8 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  # クーポンの情報を整形してポストする
+  # @param [JSON] data
   def coupon_info(data)
     data['couponInfo'].each { |d|
       hdd = d.dig('hddServiceCode')
@@ -107,6 +115,7 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  # クーポン確認コマンド
   command(:check_iij_coupon,
           name: 'クーポンの確認をする',
           condition: lambda { |_| true },
@@ -121,6 +130,7 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  # クーポンの利用オン・オフ切り替え
   command(:switch_iij_coupon,
           name: 'クーポンの使用を変更',
           condition: lambda { |_| true },
