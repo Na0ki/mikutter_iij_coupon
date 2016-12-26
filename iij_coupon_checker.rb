@@ -54,7 +54,8 @@ Plugin.create(:iij_coupon_checker) do
       }
       client.get_content(@coupon_url)
     }.next { |response|
-      p response
+      result = JSON.parse(response)
+      coupon_info(result)
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
       error err
@@ -68,14 +69,7 @@ Plugin.create(:iij_coupon_checker) do
     Thread.new {
       client = HTTPClient.new
       data = {
-        'couponInfo': [{
-          'hdoInfo': [
-             {
-              'hdoServiceCode': hdo,
-              'couponUse': switch
-             }
-          ]
-        }]
+          'couponInfo': [{'hdoInfo': [{'hdoServiceCode': hdo, 'couponUse': switch}]}]
       }
       client.default_header = {
           'Content-Type': 'application/json',
@@ -84,10 +78,26 @@ Plugin.create(:iij_coupon_checker) do
       }
       client.put(@coupon_url, data)
     }.next { |response|
-      p response
+      coupon_info(response)
     }.trap { |err|
       activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
       error err
+    }
+  end
+
+
+  def coupon_info(data)
+    data['couponInfo'].each { |d|
+      hdd = d.dig('hddServiceCode')
+      coupon_use = d.dig('hdoInfo', 0, 'couponUse')
+      number = d.dig('hdoInfo', 0, 'number')
+
+      msg = "ServiceCode: #{hdd}\n電話番号: #{number}\nクーポン利用状況: #{coupon_use ? '使用中' : '未使用'}\n"
+      user = Mikutter::System::User.new(idname: 'iijmio_coupon',
+                                        name: 'Coupon Checker',
+                                        icon: Skin['icon.png'])
+      timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
+                                                                description: msg)
     }
   end
 
