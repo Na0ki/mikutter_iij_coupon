@@ -88,10 +88,16 @@ Plugin.create(:iij_coupon_checker) do
   def coupon_info(data)
     data['couponInfo'].each { |d|
       hdd = d.dig('hddServiceCode')
+      hdo = d.dig('hdoInfo', 0, 'hdoServiceCode')
+      regulation = d.dig('hdoInfo', 0, 'regulation')
       coupon_use = d.dig('hdoInfo', 0, 'couponUse')
       number = d.dig('hdoInfo', 0, 'number')
+      volume = d.dig('hdoInfo', 0, 'coupon', 0, 'volume')
 
-      msg = "ServiceCode: #{hdd}\n電話番号: #{number}\nクーポン利用状況: #{coupon_use ? '使用中' : '未使用'}\n"
+      msg = "hddServiceCode: #{hdd}\nhdoServiceCode: #{hdo}\n電話番号: #{number}\n" +
+          "クーポン利用状況: #{coupon_use ? '使用中' : '未使用'}\n" +
+          "規制状態: #{regulation ? '規制中' : '規制なし'}\n" +
+          "クーポン残量: #{volume} [MB]"
       user = Mikutter::System::User.new(idname: 'iijmio_coupon',
                                         name: 'Coupon Checker',
                                         icon: Skin['icon.png'])
@@ -149,7 +155,7 @@ Plugin.create(:iij_coupon_checker) do
 
 
   def inspect
-    "#{self.class.to_s}(client_id=#{@client_id}, token=#{@token})"
+    "#{self.class.to_s} #{Time.now}: "
   end
 
 end
