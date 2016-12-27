@@ -181,6 +181,7 @@ Plugin.create(:iij_coupon_checker) do
 
   end
 
+  defactivity :iij_coupon_checker, 'IIJクーポンチェッカ'
 
   # mikutter設定画面
   # @see http://mikutter.blogspot.jp/2012/12/blog-post.html
