@@ -137,6 +137,8 @@ Plugin.create(:iij_coupon_checker) do
                                                                hdoInfo: hdo_info,
                                                                coupon: coupon,
                                                                plan: d.dig('plan'))
+      c = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(@token)
+      p "CouponInfo: #{c}"
 
       msg = "hdoServiceCode: #{hdo_info[:hdoServiceCode]}\n" +
           "電話番号: #{hdo_info[:number]}\n" +
@@ -174,53 +176,8 @@ Plugin.create(:iij_coupon_checker) do
     @token = UserConfig['iij_access_token']
     # トークンがなければ認証
     auth unless @token
-    # クーポンの取得
-    # TODO: hddServiceCodeの扱いをどうするか要検討
-    #
-    # # hdoリスト
-    # get_hdo(@token).next { |result|
-    #   hdo_list = result
-    #
-    #   # ダイアログの生成
-    #   dialog = Gtk::Dialog.new('クーポン切り替え',
-    #                            $main_application_window,
-    #                            Gtk::Dialog::DESTROY_WITH_PARENT,
-    #                            [Gtk::Stock::OK, Gtk::Dialog::RESPONSE_OK],
-    #                            [Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL])
-    #
-    #   # SIMの選択ボックス
-    #   dialog.vbox.add(Gtk::Label.new('SIMの選択'))
-    #   select_sim_box = Gtk::ComboBox.new(true)
-    #   dialog.vbox.add(select_sim_box)
-    #   hdo_list.each { |s| select_sim_box.append_text(s) }
-    #   select_sim_box.set_active(false)
-    #
-    #
-    #   dialog.vbox.add(Gtk::Label.new('切り替え'))
-    #   switch_status_box = Gtk::ToggleButton.new(true)
-    #   dialog.vbox.add(switch_status_box)
-    #   select_sim_box.set_active(false)
-    #
-    #   dialog.show_all
-    #
-    #   result = dialog.run
-    #
-    #   index = nil
-    #   if result == Gtk::Dialog::RESPONSE_OK
-    #     index = select_box.active
-    #   end
-    #
-    #   dialog.destroy
-    #
-    #   if true
-    #     p hdo_list[index]
-    #   end
-    #
-    #   # fixme: 上のhdo_listから選択したものを使用する
-    #   hdd = 'hoge'
-    #   switch = false
-    #   switch_coupon(@token, hdd, switch)
-    # }
+
+    # TODO: オンオフを実行する
 
   end
 
