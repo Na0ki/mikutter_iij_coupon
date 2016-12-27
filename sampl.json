@@ -1,0 +1,110 @@
+[
+  {
+    "hddServiceCode": "hdd11481019",
+    "coupon": [
+      {
+        "volume": 1590,
+        "expire": "201612",
+        "type": "bundle"
+      },
+      {
+        "volume": 3000,
+        "expire": "201701",
+        "type": "bundle"
+      },
+      {
+        "volume": 0,
+        "expire": "201612",
+        "type": "topup"
+      },
+      {
+        "volume": 0,
+        "expire": "201701",
+        "type": "topup"
+      },
+      {
+        "volume": 0,
+        "expire": "201702",
+        "type": "topup"
+      },
+      {
+        "volume": 0,
+        "expire": "201703",
+        "type": "topup"
+      }
+    ],
+    "hdoInfo": [
+      {
+        "regulation": false,
+        "couponUse": true,
+        "iccid": "DN115148101919",
+        "coupon": [
+          {
+            "volume": 10,
+            "expire": nil,
+            "type": "sim"
+          }
+        ],
+        "hdoServiceCode": "hdo11451481",
+        "voice": true,
+        "sms": true,
+        "number": "08019191145"
+      }
+    ],
+    "plan": "Minimum Start"
+  },
+  {
+    "hddServiceCode": "hdd81011451",
+    "coupon": [
+      {
+        "volume": 2500,
+        "expire": "201612",
+        "type": "bundle"
+      },
+      {
+        "volume": 3000,
+        "expire": "201701",
+        "type": "bundle"
+      },
+      {
+        "volume": 0,
+        "expire": "201612",
+        "type": "topup"
+      },
+      {
+        "volume": 0,
+        "expire": "201701",
+        "type": "topup"
+      },
+      {
+        "volume": 0,
+        "expire": "201702",
+        "type": "topup"
+      },
+      {
+        "volume": 0,
+        "expire": "201703",
+        "type": "topup"
+      }
+    ],
+    "hdoInfo": [
+      {
+        "regulation": false,
+        "couponUse": true,
+        "iccid": "1145141919810114514",
+        "coupon": [
+          {
+            "volume": 10,
+            "expire": nil,
+            "type": "sim"
+          }
+        ],
+        "hdoServiceCode": "hdu11451419",
+        "voice": true,
+        "sms": true,
+        "number": "08011451419"
+      }
+    ],
+    "plan": "Minimum Start"
+  }
+]
