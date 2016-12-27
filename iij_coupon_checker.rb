@@ -51,7 +51,7 @@ Plugin.create(:iij_coupon_checker) do
     c.get_coupon_info.next { |data|
       data.each { |d|
         # FIXME: ここで d（CouponInfoのモデルインスタンス）
-        p d[:@hddServiceCode]
+        p d.instance_variable_get('@hdo_info')
       }
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"

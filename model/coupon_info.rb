@@ -6,7 +6,7 @@ require_relative 'hdo_info'
 module Plugin::IIJ_COUPON_CHECKER
   class CouponInfo < Retriever::Model
 
-    attr_reader :hddServiceCode, :hdoInfo
+    attr_accessor :couponInfo, :hdo_info
 
     field.string :hddServiceCode
     field.has :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
@@ -75,7 +75,7 @@ module Plugin::IIJ_COUPON_CHECKER
         sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: d.dig('hdoInfo', 0, 'coupon', 0, 'volume'),
                                                             expire: d.dig('hdoInfo', 0, 'coupon', 0, 'expire'),
                                                             type: d.dig('hdoInfo', 0, 'coupon', 0, 'type'))
-        hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: d.dig('hdoInfo', 0, 'regulation'),
+        @hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: d.dig('hdoInfo', 0, 'regulation'),
                                                            couponUse: d.dig('hdoInfo', 0, 'couponUse'),
                                                            iccid: d.dig('hdoInfo', 0, 'iccid'),
                                                            coupon: sim_coupon,
@@ -93,12 +93,12 @@ module Plugin::IIJ_COUPON_CHECKER
         }
 
         # バンドルクーポンや課金クーポン
-        coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: d.dig('hddServiceCode'),
-                                                                 hdoInfo: hdo_info,
+        @coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: d.dig('hddServiceCode'),
+                                                                 hdoInfo: @hdo_info,
                                                                  coupon: coupons,
                                                                  plan: d.dig('plan'))
-        p coupon_info
-        info.push(coupon_info)
+        p @coupon_info
+        info.push(@coupon_info)
       }
       p info
       info
