@@ -8,7 +8,7 @@ module Plugin::IIJ_COUPON_CHECKER
 
     field.string  :hddServiceCode
     field.has     :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
-    field.has     :coupon, Plugin::IIJ_COUPON_CHECKER::Coupon
+    field.has     :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
     field.string  :plan
 
 
@@ -110,14 +110,19 @@ module Plugin::IIJ_COUPON_CHECKER
                                                            voice: d.dig('hdoInfo', 0, 'voice'),
                                                            sms: d.dig('hdoInfo', 0, 'sms'),
                                                            number: d.dig('hdoInfo', 0, 'number'))
+
+        coupons = []
+        d.dig('coupon').each { |c|
+          coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
+                                                          expire: c.dig('expire'),
+                                                          type: c.dig('typo'))
+          coupons.push(coupon)
+        }
+
         # バンドルクーポンや課金クーポン
-        # FIXME: 複数のクーポン情報を適切にモデルに落とし込めるようにする
-        coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: 0,
-                                                        expire: '201701',
-                                                        type: 'bundle')
         coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: d.dig('hddServiceCode'),
                                                                  hdoInfo: hdo_info,
-                                                                 coupon: coupon,
+                                                                 coupon: coupons,
                                                                  plan: d.dig('plan'))
         info.push(coupon_info)
       }
