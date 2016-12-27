@@ -76,26 +76,33 @@ Plugin.create(:iij_coupon_checker) do
   # クーポンのオン・オフの切り替え
   # @param [String] hdo hdoServiceInfo
   # @param [boolean] switch オン/オフ
-  def switch_coupon(hdo, switch)
+  def switch_coupon(token, hdo, switch)
     Thread.new {
       client = HTTPClient.new
       data = {
-          'couponInfo': [{'hdoInfo': [{'hdoServiceCode': hdo, 'couponUse': switch}]}]
-      }
+          :couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => switch}]}]
+      }.to_hash
       client.default_header = {
           'Content-Type': 'application/json',
           'X-IIJmio-Developer': @client_id,
           'X-IIJmio-Authorization': token
       }
-      client.put(@coupon_url, data)
+      client.put(@coupon_url, JSON.generate(data))
     }.next { |response|
-      coupon_info(response).each { |msg|
-        user = Mikutter::System::User.new(idname: 'iijmio_coupon',
-                                          name: 'Coupon Checker',
-                                          icon: Skin['icon.png'])
-        timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
-                                                                  description: msg)
-      }
+      user = Mikutter::System::User.new(idname: 'iijmio_coupon',
+                                        name: 'Coupon Checker',
+                                        icon: Skin['icon.png'])
+      if response.status_code == 200
+        msg = "クーポンのステータスが変更されました\n" +
+            "hdoServiceCode: #{hdo}\n" +
+            "現在の状態: #{switch ? '使用中' : '未使用'}"
+      else
+        p response
+        msg = "ステータスコード: #{response.status} (#{response.reason})\n" +
+            "詳細: #{JSON.parse(response.content).dig('returnCode')}"
+      end
+      timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
+                                                                description: msg)
     }.trap { |err|
       activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
       error err
@@ -126,6 +133,27 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+  def get_hdo(token)
+    hdos = []
+    Thread.new {
+      client = HTTPClient.new
+      client.default_header = {
+          'Content-Type': 'application/json',
+          'X-IIJmio-Developer': @client_id,
+          'X-IIJmio-Authorization': token
+      }
+      client.get_content(@coupon_url)
+    }.next { |response|
+      result = JSON.parse(response)
+      result['couponInfo'].each { |d|
+        hdo = d.dig('hdoInfo', 0, 'hdoServiceCode')
+        hdos.push(hdo)
+      }
+      hdos
+    }
+  end
+
+
   # クーポン確認コマンド
   command(:check_iij_coupon,
           name: 'クーポンの確認をする',
@@ -153,8 +181,52 @@ Plugin.create(:iij_coupon_checker) do
     auth unless @token
     # クーポンの取得
     # TODO: hddServiceCodeの扱いをどうするか要検討
-    hdd = ''
-    switch_coupon(hdd, @token)
+
+    # hdoリスト
+    get_hdo(@token).next { |result|
+      hdo_list = result
+
+      # ダイアログの生成
+      dialog = Gtk::Dialog.new('クーポン切り替え',
+                               $main_application_window,
+                               Gtk::Dialog::DESTROY_WITH_PARENT,
+                               [Gtk::Stock::OK, Gtk::Dialog::RESPONSE_OK],
+                               [Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL])
+
+      # SIMの選択ボックス
+      dialog.vbox.add(Gtk::Label.new('SIMの選択'))
+      select_sim_box = Gtk::ComboBox.new(true)
+      dialog.vbox.add(select_sim_box)
+      hdo_list.each { |s| select_sim_box.append_text(s) }
+      select_sim_box.set_active(false)
+
+
+      dialog.vbox.add(Gtk::Label.new('切り替え'))
+      switch_status_box = Gtk::ToggleButton.new(true)
+      dialog.vbox.add(switch_status_box)
+      select_sim_box.set_active(false)
+
+      dialog.show_all
+
+      result = dialog.run
+
+      index = nil
+      if result == Gtk::Dialog::RESPONSE_OK
+        index = select_box.active
+      end
+
+      dialog.destroy
+
+      if true
+        p hdo_list[index]
+      end
+
+      # fixme: 上のhdo_listから選択したものを使用する
+      hdd = 'hoge'
+      switch = false
+      switch_coupon(@token, hdd, switch)
+    }
+
   end
 
 
