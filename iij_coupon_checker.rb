@@ -121,6 +121,23 @@ Plugin.create(:iij_coupon_checker) do
       coupon_use = d.dig('hdoInfo', 0, 'couponUse')
       number = d.dig('hdoInfo', 0, 'number')
       volume = d.dig('hdoInfo', 0, 'coupon', 0, 'volume')
+      expire = d.dig('hdoInfo', 0, 'coupon', 0, 'expire')
+      type = d.dig('hdoInfo', 0, 'coupon', 0, 'type')
+
+      coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: volume,
+                                                      expire: '',
+                                                      type: '')
+      sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: volume,
+                                                          expire: expire,
+                                                          type: type)
+      hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: regulation,
+                                                         couponUse: coupon_use,
+                                                         iccid: '',
+                                                         coupon: sim_coupon,
+                                                         hdoServiceCode: '',
+                                                         voice: true,
+                                                         sms: true,
+                                                         number: '')
 
       msg = "hdoServiceCode: #{hdo}\n" +
           "電話番号: #{number}\n" +
