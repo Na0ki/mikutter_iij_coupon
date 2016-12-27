@@ -6,9 +6,11 @@ require_relative 'hdo_info'
 module Plugin::IIJ_COUPON_CHECKER
   class CouponInfo < Retriever::Model
 
+    attr_reader :hddServiceCode, :hdoInfo
+
     field.string :hddServiceCode
-    field.has    :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
-    field.has    :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
+    field.has :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
+    field.has :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
     field.string :plan
 
 
@@ -30,7 +32,7 @@ module Plugin::IIJ_COUPON_CHECKER
         client.get_content(@coupon_url)
       }.next { |response|
         data = JSON.parse(response)
-        coupon_data(data) || []
+        coupon_data(data)
       }
     end
 
@@ -95,8 +97,10 @@ module Plugin::IIJ_COUPON_CHECKER
                                                                  hdoInfo: hdo_info,
                                                                  coupon: coupons,
                                                                  plan: d.dig('plan'))
+        p coupon_info
         info.push(coupon_info)
       }
+      p info
       info
     end
 
