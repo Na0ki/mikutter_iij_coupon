@@ -12,7 +12,7 @@ module Plugin::IIJ_COUPON_CHECKER
 
 
     def inspect
-      "#{self.class.to_s}(id = #{id}, name = #{name})"
+      "#{self.class.to_s}(hdd = #{hddServiceCode}, plan = #{plan})"
     end
 
   end

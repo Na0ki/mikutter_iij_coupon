@@ -57,7 +57,7 @@ Plugin.create(:iij_coupon_checker) do
       client.get_content(@coupon_url)
     }.next { |response|
       result = JSON.parse(response)
-      coupon_info(result).each { |msg|
+      coupon_data(result).each { |msg|
         user = Mikutter::System::User.new(idname: 'iijmio_coupon',
                                           name: 'Coupon Checker',
                                           icon: Skin['icon.png'])
@@ -113,37 +113,36 @@ Plugin.create(:iij_coupon_checker) do
   # クーポンの情報を整形してポストする
   # @param [JSON] data
   # @return [Array] 整形済みの文字列を格納した配列
-  def coupon_info(data)
+  def coupon_data(data)
     messages = []
     data['couponInfo'].each { |d|
-      hdo = d.dig('hdoInfo', 0, 'hdoServiceCode')
-      regulation = d.dig('hdoInfo', 0, 'regulation')
-      coupon_use = d.dig('hdoInfo', 0, 'couponUse')
-      number = d.dig('hdoInfo', 0, 'number')
-      volume = d.dig('hdoInfo', 0, 'coupon', 0, 'volume')
-      expire = d.dig('hdoInfo', 0, 'coupon', 0, 'expire')
-      type = d.dig('hdoInfo', 0, 'coupon', 0, 'type')
-
-      coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: volume,
-                                                      expire: '',
-                                                      type: '')
-      sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: volume,
-                                                          expire: expire,
-                                                          type: type)
-      hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: regulation,
-                                                         couponUse: coupon_use,
-                                                         iccid: '',
+      # SIM内クーポン
+      sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: d.dig('hdoInfo', 0, 'coupon', 0, 'volume'),
+                                                          expire: d.dig('hdoInfo', 0, 'coupon', 0, 'expire'),
+                                                          type: d.dig('hdoInfo', 0, 'coupon', 0, 'type'))
+      hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: d.dig('hdoInfo', 0, 'regulation'),
+                                                         couponUse: d.dig('hdoInfo', 0, 'couponUse'),
+                                                         iccid: d.dig('hdoInfo', 0, 'iccid'),
                                                          coupon: sim_coupon,
-                                                         hdoServiceCode: '',
-                                                         voice: true,
-                                                         sms: true,
-                                                         number: '')
+                                                         hdoServiceCode: d.dig('hdoInfo', 0, 'hdoServiceCode'),
+                                                         voice: d.dig('hdoInfo', 0, 'voice'),
+                                                         sms: d.dig('hdoInfo', 0, 'sms'),
+                                                         number: d.dig('hdoInfo', 0, 'number'))
+      # バンドルクーポンや課金クーポン
+      # FIXME: 複数のクーポン情報を適切にモデルに落とし込めるようにする
+      coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: 0,
+                                                      expire: '201701',
+                                                      type: 'bundle')
+      coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: d.dig('hddServiceCode'),
+                                                               hdoInfo: hdo_info,
+                                                               coupon: coupon,
+                                                               plan: d.dig('plan'))
 
-      msg = "hdoServiceCode: #{hdo}\n" +
-          "電話番号: #{number}\n" +
-          "クーポン利用状況: #{coupon_use ? '使用中' : '未使用'}\n" +
-          "規制状態: #{regulation ? '規制中' : '規制なし'}\n" +
-          "SIM内クーポン残量: #{volume} [MB]"
+      msg = "hdoServiceCode: #{hdo_info[:hdoServiceCode]}\n" +
+          "電話番号: #{hdo_info[:number]}\n" +
+          "クーポン利用状況: #{hdo_info[:couponUse] ? '使用中' : '未使用'}\n" +
+          "規制状態: #{hdo_info[:regulation] ? '規制中' : '規制なし'}\n" +
+          "SIM内クーポン残量: #{sim_coupon[:expire]} [MB]"
       messages.push(msg)
     }
     messages

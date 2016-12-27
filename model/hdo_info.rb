@@ -4,18 +4,18 @@ require_relative 'coupon'
 module Plugin::IIJ_COUPON_CHECKER
   class HDOInfo < Retriever::Model
 
-    field.boolean :regulation
-    field.boolean :couponUse
+    field.bool    :regulation
+    field.bool    :couponUse
     field.string  :iccid
     field.has     :coupon, Plugin::IIJ_COUPON_CHECKER::Coupon
     field.string  :hdoServiceCode
-    field.boolean :voice
-    field.boolean :sms
+    field.bool    :voice
+    field.bool    :sms
     field.string  :number
 
 
     def inspect
-      "#{self.class.to_s}(id = #{id}, name = #{name})"
+      "#{self.class.to_s}(iccid = #{iccid}, number = #{number})"
     end
 
   end

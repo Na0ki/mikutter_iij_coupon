@@ -9,7 +9,7 @@ module Plugin::IIJ_COUPON_CHECKER
 
 
     def inspect
-      "#{self.class.to_s}(id = #{id}, name = #{name})"
+      "#{self.class.to_s}(type = #{type}, volume = #{volume})"
     end
 
   end
