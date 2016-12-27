@@ -7,10 +7,5 @@ module Plugin::IIJ_COUPON_CHECKER
     field.string  :expire
     field.string  :type
 
-
-    def inspect
-      "#{self.class.to_s}(type = #{type}, volume = #{volume})"
-    end
-
   end
 end

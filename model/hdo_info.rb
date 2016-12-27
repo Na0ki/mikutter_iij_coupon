@@ -13,10 +13,5 @@ module Plugin::IIJ_COUPON_CHECKER
     field.bool    :sms
     field.string  :number
 
-
-    def inspect
-      "#{self.class.to_s}(iccid = #{iccid}, number = #{number})"
-    end
-
   end
 end

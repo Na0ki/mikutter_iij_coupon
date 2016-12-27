@@ -30,11 +30,7 @@ module Plugin::IIJ_COUPON_CHECKER
         client.get_content(@coupon_url)
       }.next { |response|
         data = JSON.parse(response)
-        return coupon_data(data)
-      }.trap { |err|
-        activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
-        error err
-        # TODO: トークン切れの場合はauthを実行する
+        coupon_data(data) || []
       }
     end
 
@@ -61,11 +57,6 @@ module Plugin::IIJ_COUPON_CHECKER
         activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
         error err
       }
-    end
-
-
-    def inspect
-      "#{self.class.to_s}(hdd = #{hddServiceCode}, plan = #{plan})"
     end
 
 
