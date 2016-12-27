@@ -6,10 +6,10 @@ require_relative 'hdo_info'
 module Plugin::IIJ_COUPON_CHECKER
   class CouponInfo < Retriever::Model
 
-    field.string  :hddServiceCode
-    field.has     :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
-    field.has     :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
-    field.string  :plan
+    field.string :hddServiceCode
+    field.has    :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
+    field.has    :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
+    field.string :plan
 
 
     def initialize(token)
@@ -19,22 +19,23 @@ module Plugin::IIJ_COUPON_CHECKER
     end
 
 
-    # クーポンの情報を返す
-    # 一度でもクーポンの取得に成功すると、二度目以降はその内容を返す
-    # FIXME: あとで修正する（毎回新しい情報が必要？）
-    def info
-      cache = @coupon_info
-      if cache
-        Delayer::Deferred.new.next { |info| @coupon_info = info.freeze }
-      else
-        get_coupon_info(@token).next { |info| @coupon_info = info.freeze }
-      end
-    end
-
-
-    #
-    def info!
-      @coupon_info
+    # クーポン情報の取得
+    # @return [Delayer::Deferred::Deferredable] クーポンのモデルを引数にcallbackするDeferred
+    def get_coupon_info
+      Thread.new {
+        client = HTTPClient.new
+        client.default_header = {'Content-Type': 'application/json',
+                                 'X-IIJmio-Developer': @client_id,
+                                 'X-IIJmio-Authorization': @token}
+        client.get_content(@coupon_url)
+      }.next { |response|
+        data = JSON.parse(response)
+        return coupon_data(data)
+      }.trap { |err|
+        activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
+        error err
+        # TODO: トークン切れの場合はauthを実行する
+      }
     end
 
 
@@ -69,27 +70,6 @@ module Plugin::IIJ_COUPON_CHECKER
 
 
     private
-
-    # クーポン情報の取得
-    # @return [Delayer::Deferred::Deferredable] クーポンのモデルを引数にcallbackするDeferred
-    def get_coupon_info
-      Thread.new {
-        client = HTTPClient.new
-        client.default_header = {
-            'Content-Type': 'application/json',
-            'X-IIJmio-Developer': @client_id,
-            'X-IIJmio-Authorization': @token
-        }
-        client.get_content(@coupon_url)
-      }.next { |response|
-        data = JSON.parse(response)
-        return coupon_data(data)
-      }.trap { |err|
-        activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
-        error err
-        # TODO: トークン切れの場合はauthを実行する
-      }
-    end
 
 
     # クーポンのJSONをモデルに落とし込む
