@@ -19,6 +19,9 @@ module Plugin::IIJ_COUPON_CHECKER
     end
 
 
+    # クーポンの情報を返す
+    # 一度でもクーポンの取得に成功すると、二度目以降はその内容を返す
+    # FIXME: あとで修正する（毎回新しい情報が必要？）
     def info
       cache = @coupon_info
       if cache
@@ -29,16 +32,20 @@ module Plugin::IIJ_COUPON_CHECKER
     end
 
 
+    #
     def info!
       @coupon_info
     end
 
 
-    def switch(toggle)
+    # クーポンの利用状態の切り替え（On/Off）
+    # @param
+    def switch(is_valid)
       Thread.new {
         client = HTTPClient.new
+        # FIXME: hdoの取得方法を考える
         data = {
-            :couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => toggle}]}]
+            :couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => is_valid}]}]
         }.to_hash
         client.default_header = {
             'Content-Type': 'application/json',
