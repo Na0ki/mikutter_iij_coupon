@@ -4,10 +4,8 @@ require_relative 'coupon'
 require_relative 'hdo_info'
 
 module Plugin::IIJ_COUPON_CHECKER
-  class IDNotFoundError < StandardError;
-  end
-
   class CouponInfo < Retriever::Model
+
     attr_reader :hddServiceCode, :hdo_info, :coupon, :plan
 
     @coupon_url = 'https://api.iijmio.jp/mobile/d/v1/coupon/'
