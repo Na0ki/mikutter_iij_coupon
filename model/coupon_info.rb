@@ -82,8 +82,9 @@ module Plugin::IIJ_COUPON_CHECKER
 
 
     # クーポンの利用状態の切り替え（On/Off）
+    # @param [String] hdo hdoServiceCode
     # @param [Bool] is_valid クーポンのオン・オフのフラグ
-    def switch(is_valid)
+    def self.switch(hdo, is_valid)
       Thread.new {
         client = HTTPClient.new
         # FIXME: hdoの取得方法を考える
@@ -98,10 +99,7 @@ module Plugin::IIJ_COUPON_CHECKER
         client.put(@coupon_url, JSON.generate(data))
       }.next { |response|
         Delayer::Deferred.fail(response) unless (response.nil? or response&.status_code == 200)
-        # TODO: 正常に変更された場合の処理を書く
-      }.trap { |err|
-        activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
-        error err
+        response
       }
     end
 

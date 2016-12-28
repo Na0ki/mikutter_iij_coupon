@@ -8,8 +8,6 @@ require_relative 'model'
 
 Plugin.create(:iij_coupon_checker) do
 
-  @coupon_url = 'https://api.iijmio.jp/mobile/d/v1/coupon/'
-
   class IDNotFoundError < StandardError;
   end
 
@@ -27,7 +25,6 @@ Plugin.create(:iij_coupon_checker) do
 
 
   # クーポンの取得
-  # @param [String] token トークン
   def check_coupon
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       data.each { |d|
@@ -50,42 +47,27 @@ Plugin.create(:iij_coupon_checker) do
 
   # クーポンのオン・オフの切り替え
   # @param [String] hdo hdoServiceInfo
-  # @param [boolean] switch オン/オフ
-  def switch_coupon(token, hdo, switch)
-    Thread.new {
-      client = HTTPClient.new
-      data = {
-          :couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => switch}]}]
-      }.to_hash
-      client.default_header = {
-          'Content-Type': 'application/json',
-          'X-IIJmio-Developer': @client_id,
-          'X-IIJmio-Authorization': token
-      }
-      client.put(@coupon_url, JSON.generate(data))
-    }.next { |response|
-      user = Mikutter::System::User.new(idname: 'iijmio_coupon',
-                                        name: 'Coupon Checker',
-                                        icon: Skin['icon.png'])
-      if response.status_code == 200
-        msg = "クーポンのステータスが変更されました\n" +
-            "hdoServiceCode: #{hdo}\n" +
-            "現在の状態: #{switch ? '使用中' : '未使用'}"
-      else
-        p response
-        msg = "ステータスコード: #{response.status} (#{response.reason})\n" +
-            "詳細: #{JSON.parse(response.content).dig('returnCode')}"
-      end
-      timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
-                                                                description: msg)
+  # @param [boolean] is_valid オン/オフ
+  def switch_coupon(hdo, is_valid)
+    Plugin::IIJ_COUPON_CHECKER::CouponInfo.switch(hdo, is_valid).next { |_|
+      msg = "クーポンのステータスが変更されました\n" +
+          "hdoServiceCode: #{hdo}\n" +
+          "現在の状態: #{is_valid ? '使用中' : '未使用'}"
+      # 投稿
+      post(msg)
     }.trap { |err|
       activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
       error err
+      msg = "ステータスコード: #{err.status} (#{err.reason})\n" +
+          "詳細: #{JSON.parse(err.content).dig('returnCode')}"
+      post(msg)
+      # TODO: トークン切れの場合はauthを実行する
     }
   end
 
 
-
+  # メッセージの投稿
+  # @param [String] msg 投稿メッセージ
   def post(msg)
     user = Mikutter::System::User.new(idname: 'iijmio_coupon',
                                       name: 'Coupon Checker',
@@ -114,15 +96,14 @@ Plugin.create(:iij_coupon_checker) do
           visible: true,
           role: :timeline
   ) do |_|
-    @token = UserConfig['iij_access_token']
-    # トークンがなければ認証
-    auth unless @token
-
-    # TODO: オンオフを実行する
-
+    # TODO: オンオフするhdoを選択できるようにする
+    switch_coupon('YOUR_HDO_CODE_HERE', true)
   end
 
+
+  # アクティビティの設定
   defactivity :iij_coupon_checker, 'IIJクーポンチェッカ'
+
 
   # mikutter設定画面
   # @see http://mikutter.blogspot.jp/2012/12/blog-post.html
