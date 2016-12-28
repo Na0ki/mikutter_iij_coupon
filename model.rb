@@ -3,4 +3,3 @@
 require_relative 'model/coupon'
 require_relative 'model/coupon_info'
 require_relative 'model/hdo_info'
-require_relative 'model/user'
