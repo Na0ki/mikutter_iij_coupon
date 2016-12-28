@@ -8,22 +8,6 @@ require_relative 'model'
 
 Plugin.create(:iij_coupon_checker) do
 
-  class IDNotFoundError < StandardError;
-  end
-
-  begin
-    id = UserConfig['iij_developer_id']
-    if id.nil? || id == ''
-      raise IDNotFoundError
-    else
-      @client_id = id
-    end
-  rescue IDNotFoundError => err
-    activity :iij_coupon_checker, "デベロッパーIDが存在しません\nIDを設定してください\n: #{err}"
-    error err
-  end
-
-
   # クーポンの取得
   def check_coupon
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|

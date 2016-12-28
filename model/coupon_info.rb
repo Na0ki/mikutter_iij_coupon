@@ -4,10 +4,12 @@ require_relative 'coupon'
 require_relative 'hdo_info'
 
 module Plugin::IIJ_COUPON_CHECKER
+  class IDNotFoundError < StandardError;
+  end
+
   class CouponInfo < Retriever::Model
     attr_reader :hddServiceCode, :hdo_info, :coupon, :plan
 
-    @client_id = UserConfig['iij_developer_id']
     @coupon_url = 'https://api.iijmio.jp/mobile/d/v1/coupon/'
 
     # モデル
@@ -39,10 +41,11 @@ module Plugin::IIJ_COUPON_CHECKER
     # クーポン情報の取得
     # @return [Delayer::Deferred::Deferredable] クーポンのモデルを引数にcallbackするDeferred
     def self.get_info
+      Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
       Thread.new {
         client = HTTPClient.new
         client.default_header = {'Content-Type': 'application/json',
-                                 'X-IIJmio-Developer': @client_id,
+                                 'X-IIJmio-Developer': UserConfig['iij_developer_id'],
                                  'X-IIJmio-Authorization': token}
         client.get_content(@coupon_url)
       }.next { |response|
@@ -86,14 +89,14 @@ module Plugin::IIJ_COUPON_CHECKER
     # @param [Bool] is_valid クーポンのオン・オフのフラグ
     def self.switch(hdo, is_valid)
       Thread.new {
+        Delayer::Deferred.fail('Developer ID not defined') unless UserConfig['iij_developer_id']
         client = HTTPClient.new
-        # FIXME: hdoの取得方法を考える
         data = {
             :couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => is_valid}]}]
         }.to_hash
         client.default_header = {
             'Content-Type': 'application/json',
-            'X-IIJmio-Developer': @client_id,
+            'X-IIJmio-Developer': UserConfig['iij_developer_id'],
             'X-IIJmio-Authorization': token
         }
         client.put(@coupon_url, JSON.generate(data))
