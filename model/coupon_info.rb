@@ -24,13 +24,14 @@ module Plugin::IIJ_COUPON_CHECKER
     def self.auth
       Delayer::Deferred.fail('Developer ID not defined') unless UserConfig['iij_developer_id']
       uri = 'https://api.iijmio.jp/mobile/d/v1/authorization/' +
-          "?response_type=token&client_id=#{UserConfig['iij_developer_id']}" +
+          '?response_type=token&' +
+          "client_id=#{UserConfig['iij_developer_id']}" +
           '&state=mikutter_iij_coupon_checker' +
           "&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
 
       Thread.new {
         Plugin.call(:open, uri)
-        # FIXME: 認証部分を扱いやすいように改良する（webrickでサーバを建てる）
+        # FIXME: 認証部分を扱いやすいように改良する（WebRickでサーバを建てる）
       }.next { |response|
         # Delayer::Deferred.fail(response) unless (response.nil? or response&.status_code == 200)
         p response
