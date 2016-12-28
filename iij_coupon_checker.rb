@@ -26,32 +26,18 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
-  # 認証
-  def auth
-    uri = 'https://api.iijmio.jp/mobile/d/v1/authorization/' +
-        "?response_type=token&client_id=#{@client_id}&state=mikutter_iij_coupon_checker&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
-
-    Thread.new {
-      Plugin.call(:open, uri)
-      # FIXME: 認証部分を扱いやすいように改良する
-    }.next { |response|
-      # Delayer::Deferred.fail(response) unless (response.nil? or response&.status == 200)
-      p response
-    }.trap { |err|
-      activity :iij_coupon_checker, "認証に失敗しました: #{err.to_s}"
-      error err
-    }
-  end
-
-
   # クーポンの取得
   # @param [String] token トークン
-  def check_coupon(token)
-    c = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(@token)
-    c.get_coupon_info.next { |data|
+  def check_coupon
+    Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       data.each { |d|
-        # FIXME: ここで d（CouponInfoのモデルインスタンス）
-        p d.instance_variable_get('@hdo_info')
+        info = d.instance_variable_get(:@value)
+        msg = "hdoServiceCode: #{info[:hdo_info].hdoServiceCode}\n" +
+            "電話番号: #{info[:hdo_info].number}\n" +
+            "クーポン利用状況: #{info[:hdo_info].couponUse ? '使用中' : '未使用'}\n" +
+            "規制状態: #{info[:hdo_info].regulation ? '規制中' : '規制なし'}\n" +
+            "SIM内クーポン残量: #{info[:hdo_info].coupon.volume} [MB]"
+        post(msg)
       }
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
@@ -125,8 +111,6 @@ Plugin.create(:iij_coupon_checker) do
                                                                hdoInfo: hdo_info,
                                                                coupon: coupon,
                                                                plan: d.dig('plan'))
-      c = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(@token)
-      p "CouponInfo: #{c}"
 
       msg = "hdoServiceCode: #{hdo_info[:hdoServiceCode]}\n" +
           "電話番号: #{hdo_info[:number]}\n" +
@@ -139,6 +123,16 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
+
+  def post(msg)
+    user = Mikutter::System::User.new(idname: 'iijmio_coupon',
+                                      name: 'Coupon Checker',
+                                      icon: Skin['icon.png'])
+    timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
+                                                              description: msg)
+  end
+
+
   # クーポン確認コマンド
   command(:check_iij_coupon,
           name: 'クーポンの確認をする',
@@ -146,11 +140,8 @@ Plugin.create(:iij_coupon_checker) do
           visible: true,
           role: :timeline
   ) do |_|
-    @token = UserConfig['iij_access_token']
-    # トークンがなければ認証
-    auth unless @token
     # クーポンの取得
-    check_coupon(@token)
+    check_coupon
   end
 
 
