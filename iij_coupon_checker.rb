@@ -24,7 +24,6 @@ Plugin.create(:iij_coupon_checker) do
     }.trap { |err|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
       error err
-      # TODO: トークン切れの場合はauthを実行する
     }
   end
 
@@ -45,7 +44,6 @@ Plugin.create(:iij_coupon_checker) do
       msg = "ステータスコード: #{err.status} (#{err.reason})\n" +
           "詳細: #{JSON.parse(err.content).dig('returnCode')}"
       post(msg)
-      # TODO: トークン切れの場合はauthを実行する
     }
   end
 

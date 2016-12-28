@@ -21,7 +21,7 @@ module Plugin::IIJ_COUPON_CHECKER
 
     # 認証
     # @return [Delayer::Deferred::Deferredable] 認証結果を引数にcallbackするDeferred
-    def auth
+    def self.auth
       Delayer::Deferred.fail('Developer ID not defined') unless UserConfig['iij_developer_id']
       uri = 'https://api.iijmio.jp/mobile/d/v1/authorization/' +
           "?response_type=token&client_id=#{UserConfig['iij_developer_id']}" +
@@ -49,6 +49,8 @@ module Plugin::IIJ_COUPON_CHECKER
                                  'X-IIJmio-Authorization': token}
         client.get_content(@coupon_url)
       }.next { |response|
+        p response
+        auth if (response&.status_code == 403) # TODO: returnCodeでマッチングする
         data = JSON.parse(response)
         info = []
         data['couponInfo'].each { |d|
@@ -101,6 +103,7 @@ module Plugin::IIJ_COUPON_CHECKER
         }
         client.put(@coupon_url, JSON.generate(data))
       }.next { |response|
+        auth if (response&.status_code == 403) # TODO: returnCodeでマッチングする
         Delayer::Deferred.fail(response) unless (response.nil? or response&.status_code == 200)
         response
       }
