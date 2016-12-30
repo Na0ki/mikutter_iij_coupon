@@ -48,21 +48,74 @@ Plugin.create(:iij_coupon_checker) do
           condition: lambda { |_| true },
           visible: true,
           role: :timeline) { |_|
-    # TODO: オンオフするhdoを選択できるようにする
-    hdo = 'YOUR_HDO_CODE_HERE'
-    is_valid = true
-    Plugin::IIJ_COUPON_CHECKER::CouponInfo.switch(hdo, is_valid).next { |_response|
-      msg = "クーポンのステータスが更新されました\n" +
-          "hdoServiceCode: #{hdo}\n" +
-          "クーポンのステータス: #{is_valid ? 'オン' : 'オフ'}"
-      # 投稿
-      post(msg)
-    }.trap { |err|
-      activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
-      error err
-      msg = "ステータスコード: #{err.status} (#{err.reason})\n" +
-          "詳細: #{JSON.parse(err.content).dig('returnCode')}"
-      post(msg)
+    Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
+      hdo_list = Hash.new
+      data.each { |d|
+        info = d.instance_variable_get(:@value)
+        code = info[:hdo_info].hdoServiceCode
+        status = info[:hdo_info].couponUse
+        hdo_list[code] = status
+      }
+      hdo_list
+    }.next { |list|
+      p "list: #{list}"
+      status_list = %w(オン オフ)
+
+      Delayer.new {
+        puts 'main thread'
+        dialog = Gtk::Dialog.new('クーポンを切り替える',
+                                 $main_application_window,
+                                 Gtk::Dialog::DESTROY_WITH_PARENT,
+                                 [ Gtk::Stock::OK, Gtk::Dialog::RESPONSE_OK ],
+                                 [ Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL ])
+
+        dialog.vbox.add(Gtk::Label.new('回線の種類'))
+        service_list = Gtk::ComboBox.new(true)
+        dialog.vbox.add(service_list)
+        list.each_key { |key| service_list.append_text(key) }
+
+        dialog.vbox.add(Gtk::Label.new('切り替え'))
+        switch = Gtk::ComboBox.new(true)
+        dialog.vbox.add(switch)
+        status_list.each { |s| switch.append_text(s)}
+
+        service_list.set_active(0)
+        switch.set_active(0)
+        dialog.show_all
+
+        result = dialog.run
+
+        begin
+          Delayer::Deferred.fail(result) unless Gtk::Dialog::RESPONSE_OK
+          hdo = list.keys[service_list.active]
+          status = switch.active == 0 ? true : false
+
+          p "hdo: #{hdo}, status: #{status}"
+          # SIMのクーポン状態と指定した状態（オン・オフ）が同じ場合はリクエストを行わない
+          if list.values[service_list.active] == status
+            msg = "サービスコード #{hdo} のクーポンのステータスはすでに#{status ? 'オン' : 'オフ'}です"
+            post(msg)
+          else
+            Thread.new {
+              Plugin::IIJ_COUPON_CHECKER::CouponInfo.switch(hdo, status).next { |_response|
+                msg = "クーポンのステータスが更新されました\n" +
+                    "hdoServiceCode: #{hdo}\n" +
+                    "クーポンのステータス: #{status ? 'オン' : 'オフ'}"
+                # 投稿
+                post(msg)
+              }.trap { |err|
+                activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
+                error err
+                msg = "ステータスコード: #{err.status} (#{err.reason})\n" +
+                    "詳細: #{JSON.parse(err.content).dig('returnCode')}"
+                post(msg)
+              }
+            }
+          end
+        ensure
+          dialog.destroy
+        end
+      }
     }
   }
 
