@@ -58,11 +58,9 @@ Plugin.create(:iij_coupon_checker) do
       }
       hdo_list
     }.next { |list|
-      p "list: #{list}"
       status_list = %w(オン オフ)
 
       Delayer.new {
-        puts 'main thread'
         dialog = Gtk::Dialog.new('クーポンを切り替える',
                                  $main_application_window,
                                  Gtk::Dialog::DESTROY_WITH_PARENT,
@@ -90,7 +88,6 @@ Plugin.create(:iij_coupon_checker) do
           hdo = list.keys[service_list.active]
           status = switch.active == 0 ? true : false
 
-          p "hdo: #{hdo}, status: #{status}"
           # SIMのクーポン状態と指定した状態（オン・オフ）が同じ場合はリクエストを行わない
           if list.values[service_list.active] == status
             msg = "サービスコード #{hdo} のクーポンのステータスはすでに#{status ? 'オン' : 'オフ'}です"
