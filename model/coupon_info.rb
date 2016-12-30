@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+require 'httpclient'
+require 'uri'
+require 'webrick'
+require 'json'
+
 require_relative 'coupon'
 require_relative 'hdo_info'
 
@@ -25,20 +30,32 @@ module Plugin::IIJ_COUPON_CHECKER
           '?response_type=token&' +
           "client_id=#{UserConfig['iij_developer_id']}" +
           '&state=mikutter_iij_coupon_checker' +
-          "&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'localhost'}"
+          "&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'http://localhost'}"
 
       Thread.new {
-        Plugin.call(:open, uri)
-        # FIXME: 認証部分を扱いやすいように改良する（WebRickでサーバを建てる）
-      }.next { |response|
+        http = WEBrick::HTTPServer.new({:BindAddress => 'localhost',
+                                        :port => 8080,
+                                        :DocumentRoot => __dir__
+                                       })
+        # FIXME: WebRickでアクセストークンを取得できるようにする
+        http.mount_proc('/') do |req, res|
+          p req
+          p res
+        end
+        trap('INT') { http.stop }
+        http
+      }.next { |http|
         # Delayer::Deferred.fail(response) unless (response.nil? or response&.status_code == 200)
-        p response
+        p http
+        Plugin.call(:open, uri)
+        http.start
       }
     end
 
 
     # クーポン情報の取得
     # @return [Delayer::Deferred::Deferredable] クーポンのモデルを引数にcallbackするDeferred
+    # ステータスコードについてはAPIレファレンスを参照すること {@see https://www.iijmio.jp/hdd/coupon/mioponapi.jsp}
     def self.get_info
       Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
       Thread.new {
@@ -46,38 +63,38 @@ module Plugin::IIJ_COUPON_CHECKER
         client.default_header = {'Content-Type': 'application/json',
                                  'X-IIJmio-Developer': UserConfig['iij_developer_id'],
                                  'X-IIJmio-Authorization': token}
-        client.get_content(@coupon_url)
+        client.get(@coupon_url)
       }.next { |response|
-        p response
-        auth if (response&.status_code == 403) # TODO: returnCodeでマッチングする
-        data = JSON.parse(response)
+        Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth if (response&.status_code == 403)
+        Delayer::Deferred.fail(response) unless (response&.status_code == 200)
+
         info = []
-        data['couponInfo'].each { |d|
+        JSON.parse(response.content)['couponInfo'].each { |data|
           # SIM内クーポン
-          sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: d.dig('hdoInfo', 0, 'coupon', 0, 'volume'),
-                                                              expire: d.dig('hdoInfo', 0, 'coupon', 0, 'expire'),
-                                                              type: d.dig('hdoInfo', 0, 'coupon', 0, 'type'))
-          @hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: d.dig('hdoInfo', 0, 'regulation'),
-                                                              couponUse: d.dig('hdoInfo', 0, 'couponUse'),
-                                                              iccid: d.dig('hdoInfo', 0, 'iccid'),
+          sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: data.dig('hdoInfo', 0, 'coupon', 0, 'volume'),
+                                                              expire: data.dig('hdoInfo', 0, 'coupon', 0, 'expire'),
+                                                              type: data.dig('hdoInfo', 0, 'coupon', 0, 'type'))
+          @hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: data.dig('hdoInfo', 0, 'regulation'),
+                                                              couponUse: data.dig('hdoInfo', 0, 'couponUse'),
+                                                              iccid: data.dig('hdoInfo', 0, 'iccid'),
                                                               coupon: sim_coupon,
-                                                              hdoServiceCode: d.dig('hdoInfo', 0, 'hdoServiceCode'),
-                                                              voice: d.dig('hdoInfo', 0, 'voice'),
-                                                              sms: d.dig('hdoInfo', 0, 'sms'),
-                                                              number: d.dig('hdoInfo', 0, 'number'))
+                                                              hdoServiceCode: data.dig('hdoInfo', 0, 'hdoServiceCode'),
+                                                              voice: data.dig('hdoInfo', 0, 'voice'),
+                                                              sms: data.dig('hdoInfo', 0, 'sms'),
+                                                              number: data.dig('hdoInfo', 0, 'number'))
 
           coupons = []
-          d.dig('coupon').each { |c|
+          data.dig('coupon').each { |c|
             coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
                                                             expire: c.dig('expire'),
                                                             type: c.dig('typo'))
             coupons.push(coupon)
           }
           # バンドルクーポンや課金クーポン
-          @coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: d.dig('hddServiceCode'),
+          @coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: data.dig('hddServiceCode'),
                                                                     hdo_info: @hdo_info,
                                                                     coupon: coupons,
-                                                                    plan: d.dig('plan'))
+                                                                    plan: data.dig('plan'))
           info.push(@coupon_info)
         }
         info
@@ -103,7 +120,7 @@ module Plugin::IIJ_COUPON_CHECKER
         client.put(@coupon_url, JSON.generate(data))
       }.next { |response|
         auth if (response&.status_code == 403) # TODO: returnCodeでマッチングする
-        Delayer::Deferred.fail(response) unless (response.nil? or response&.status_code == 200)
+        Delayer::Deferred.fail(response) unless (response&.status_code == 200)
         response
       }
     end
