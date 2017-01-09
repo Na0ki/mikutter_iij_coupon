@@ -50,7 +50,7 @@ module Plugin::IIJ_COUPON_CHECKER
               res.body = File.open(File.expand_path('index.html', document_root))
               res.content_type = 'text/html'
               res.chunked = true
-              res.status == 451 if req.path.to_s.include?('repository.svg')
+              res.status == 451 if req.path.to_s.include?('favicon.ico')
 
               if req.query&.empty?
                 access_token = req.query['access_token']
