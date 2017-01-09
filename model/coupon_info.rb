@@ -27,30 +27,40 @@ module Plugin::IIJ_COUPON_CHECKER
       # 認証
       # @return [Delayer::Deferred::Deferredable] 認証結果を引数にcallbackするDeferred
       def auth
-        Delayer::Deferred.fail('Developer ID not defined') unless developer_id
-        uri = 'https://api.iijmio.jp/mobile/d/v1/authorization/' +
-            '?response_type=token&' +
-            "client_id=#{developer_id}" +
-            '&state=mikutter_iij_coupon_checker' +
-            "&redirect_uri=#{UserConfig['iij_redirect_uri'] || 'http://localhost'}"
-
         Thread.new {
-          http = WEBrick::HTTPServer.new({:BindAddress => 'localhost',
-                                          :port => 8080,
-                                          :DocumentRoot => __dir__
-                                         })
-          # FIXME: WebRickでアクセストークンを取得できるようにする
-          http.mount_proc('/') do |req, res|
-            p req
-            p res
-          end
-          trap('INT') { http.stop }
-          http
-        }.next { |http|
-          # Delayer::Deferred.fail(response) unless (response.nil? or response&.status_code == 200)
-          p http
-          Plugin.call(:open, uri)
-          http.start
+          Delayer::Deferred.fail('Developer ID not defined') unless UserConfig['iij_developer_id']
+          query = {:response_type => 'token',
+                   :client_id => UserConfig['iij_developer_id'],
+                   :state => 'mikutter_iij_coupon_checker',
+                   :redirect_uri => 'http://localhost:8080/'
+          }.to_hash
+          # リクエスト
+          Plugin.call(:open, "https://api.iijmio.jp/mobile/d/v1/authorization/?#{query.map { |k, v| "#{k}=#{v}" }.join('&')}")
+          Thread.new {
+            document_root = File.join(__dir__, '../www/')
+            # OAuth認証用サーバの設定
+            config = {
+                :BindAddress => 'localhost',
+                :Port => 8080,
+                :DocumentRoot => document_root
+            }
+
+            @server = WEBrick::HTTPServer.new(config)
+            @server.mount_proc('/') do |req, res|
+              res.body = File.open(File.expand_path('index.html', document_root))
+              res.content_type = 'text/html'
+              res.chunked = true
+              res.status == 451 if req.path.to_s.include?('repository.svg')
+
+              if req.query&.empty?
+                access_token = req.query['access_token']
+                UserConfig['iij_access_token'] = access_token unless access_token.empty?
+              end
+            end
+            trap('INT') { @server.shutdown }
+            @server.start
+            @server
+          }
         }
       end
 
@@ -59,12 +69,14 @@ module Plugin::IIJ_COUPON_CHECKER
       # @return [Delayer::Deferred::Deferredable] クーポンのモデルを引数にcallbackするDeferred
       # ステータスコードについてはAPIレファレンスを参照すること {@see https://www.iijmio.jp/hdd/coupon/mioponapi.jsp}
       def get_info
-        Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless developer_id
+        Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
         Thread.new {
           client = HTTPClient.new
-          client.default_header = {'Content-Type': 'application/json',
-                                   'X-IIJmio-Developer': developer_id,
-                                   'X-IIJmio-Authorization': token}
+          client.default_header = {
+              :'Content-Type' => 'application/json',
+              :'X-IIJmio-Developer' => UserConfig['iij_developer_id'],
+              :'X-IIJmio-Authorization' => UserConfig['iij_access_token']
+          }.to_hash
           client.get(@coupon_url)
         }.next { |response|
           Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth if (response&.status_code == 403)
@@ -87,17 +99,15 @@ module Plugin::IIJ_COUPON_CHECKER
 
             coupons = []
             data.dig('coupon').each { |c|
-              coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
-                                                              expire: c.dig('expire'),
-                                                              type: c.dig('typo'))
-              coupons.push(coupon)
+              coupons << Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
+                                                                expire: c.dig('expire'),
+                                                                type: c.dig('typo'))
             }
             # バンドルクーポンや課金クーポン
-            @coupon_info = Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: data.dig('hddServiceCode'),
-                                                                      hdo_info: @hdo_info,
-                                                                      coupon: coupons,
-                                                                      plan: data.dig('plan'))
-            info.push(@coupon_info)
+            info << Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: data.dig('hddServiceCode'),
+                                                               hdo_info: @hdo_info,
+                                                               coupon: coupons,
+                                                               plan: data.dig('plan'))
           }
           info
         }
@@ -109,16 +119,14 @@ module Plugin::IIJ_COUPON_CHECKER
       # @param [Bool] is_valid クーポンのオン・オフのフラグ
       def switch(hdo, is_valid)
         Thread.new {
-          Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless developer_id
+          Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
           client = HTTPClient.new
-          data = {
-              :couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => is_valid}]}]
-          }.to_hash
+          data = {:couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => is_valid}]}]}.to_hash
           client.default_header = {
-              'Content-Type': 'application/json',
-              'X-IIJmio-Developer': developer_id,
-              'X-IIJmio-Authorization': token
-          }
+              :'Content-Type' => 'application/json',
+              :'X-IIJmio-Developer' => UserConfig['iij_developer_id'],
+              :'X-IIJmio-Authorization' => UserConfig['iij_access_token']
+          }.to_hash
           client.put(@coupon_url, JSON.generate(data))
         }.next { |response|
           auth if (response&.status_code == 403) # TODO: returnCodeでマッチングする
@@ -127,17 +135,6 @@ module Plugin::IIJ_COUPON_CHECKER
         }
       end
 
-
-      private
-
-
-      def developer_id
-        UserConfig['iij_developer_id']
-      end
-
-      def token
-        UserConfig['iij_access_token']
-      end
     end
 
   end

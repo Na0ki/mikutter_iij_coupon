@@ -35,9 +35,9 @@ Plugin.create(:iij_coupon_checker) do
         # 投稿
         post(msg)
       }
-    }.trap { |err|
-      activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{err}"
-      error err
+    }.trap { |e|
+      activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{e}"
+      error e
     }
   }
 
@@ -58,9 +58,8 @@ Plugin.create(:iij_coupon_checker) do
       }
       hdo_list
     }.next { |list|
-      status_list = %w(オン オフ)
-
       Delayer.new {
+        status_list = %w(オン オフ)
         dialog = Gtk::Dialog.new('クーポンを切り替える',
                                  $main_application_window,
                                  Gtk::Dialog::DESTROY_WITH_PARENT,
@@ -100,11 +99,11 @@ Plugin.create(:iij_coupon_checker) do
                     "クーポンのステータス: #{status ? 'オン' : 'オフ'}"
                 # 投稿
                 post(msg)
-              }.trap { |err|
-                activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{err}"
-                error err
-                msg = "ステータスコード: #{err.status} (#{err.reason})\n" +
-                    "詳細: #{JSON.parse(err.content).dig('returnCode')}"
+              }.trap { |e|
+                activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{e}"
+                error e
+                msg = "ステータスコード: #{e.status} (#{e.reason})\n" +
+                    "詳細: #{JSON.parse(e.content).dig('returnCode')}"
                 post(msg)
               }
             }
@@ -113,9 +112,18 @@ Plugin.create(:iij_coupon_checker) do
           dialog.destroy
         end
       }
-    }
+    }.trap { |e| error e }
   }
 
+
+  on_iij_auth_success do
+    # TODO: implement
+  end
+
+
+  on_iij_auth_failure do
+    # TODO: implement
+  end
 
   # アクティビティの設定
   defactivity :iij_coupon_checker, 'IIJクーポンチェッカ'
@@ -130,10 +138,6 @@ Plugin.create(:iij_coupon_checker) do
 
     settings('トークン') do
       input 'アクセストークン', :iij_access_token
-    end
-
-    settings('リダイレクトURI') do
-      input 'URI', :iij_redirect_uri
     end
   end
 
