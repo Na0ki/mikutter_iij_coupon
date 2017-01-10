@@ -38,6 +38,14 @@ Plugin.create(:iij_coupon_checker) do
     }.trap { |e|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{e}"
       error e
+      return_code = JSON.parse(e.content).dig('returnCode')
+      # FIXME: trapブロックで認証に飛ばすのはあり？
+      # 書いてみたけど、未検証
+      if return_code == 'User Authorization Failure'
+        Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth.next { |server|
+          p server
+        }
+      end
     }
   }
 
@@ -102,9 +110,13 @@ Plugin.create(:iij_coupon_checker) do
               }.trap { |e|
                 activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{e}"
                 error e
-                msg = "ステータスコード: #{e.status} (#{e.reason})\n" +
-                    "詳細: #{JSON.parse(e.content).dig('returnCode')}"
-                post(msg)
+                return_code = JSON.parse(e.content).dig('returnCode')
+                if return_code == 'User Authorization Failure'
+                  Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth.next { |server|
+                    p server
+                  }
+                end
+                post("ステータスコード: #{e.status} (#{e.reason})\n詳細: #{return_code}")
               }
             }
           end
