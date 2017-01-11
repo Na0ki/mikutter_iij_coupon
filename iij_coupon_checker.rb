@@ -60,8 +60,6 @@ Plugin.create(:iij_coupon_checker) do
         end
       end
 
-      p list
-
       Delayer.new {
         # クーポンのステータス
         status_list = %w(オン オフ)
