@@ -17,7 +17,7 @@ module Plugin::IIJ_COUPON_CHECKER
 
     # モデル
     field.string :hddServiceCode
-    field.has :hdoInfo, Plugin::IIJ_COUPON_CHECKER::HDOInfo
+    field.has :hdoInfo, [Plugin::IIJ_COUPON_CHECKER::HDOInfo]
     field.has :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
     field.string :plan
 
@@ -79,36 +79,44 @@ module Plugin::IIJ_COUPON_CHECKER
           }.to_hash
           client.get(@coupon_url)
         }.next { |response|
-          Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth if (response&.status_code == 403)
+          if response&.status_code == 403 and response&.content == 'User Authorization Failure'
+            Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth.next { |_| get_info }
+          end
           Delayer::Deferred.fail(response) unless (response&.status_code == 200)
 
           info = []
-          JSON.parse(response.content)['couponInfo'].each { |data|
-            # SIM内クーポン
-            sim_coupon = Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: data.dig('hdoInfo', 0, 'coupon', 0, 'volume'),
-                                                                expire: data.dig('hdoInfo', 0, 'coupon', 0, 'expire'),
-                                                                type: data.dig('hdoInfo', 0, 'coupon', 0, 'type'))
-            @hdo_info = Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: data.dig('hdoInfo', 0, 'regulation'),
-                                                                couponUse: data.dig('hdoInfo', 0, 'couponUse'),
-                                                                iccid: data.dig('hdoInfo', 0, 'iccid'),
-                                                                coupon: sim_coupon,
-                                                                hdoServiceCode: data.dig('hdoInfo', 0, 'hdoServiceCode'),
-                                                                voice: data.dig('hdoInfo', 0, 'voice'),
-                                                                sms: data.dig('hdoInfo', 0, 'sms'),
-                                                                number: data.dig('hdoInfo', 0, 'number'))
+          JSON.parse(response.content)['couponInfo'].each do |data|
+            @hdo_info = []
+            data.dig('hdoInfo').each do |hdo|
+              # SIM内クーポン
+              coupons = []
+              hdo.dig('coupon').each do |c|
+                coupons << Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
+                                                                  expire: c.dig('expire'),
+                                                                  type: c.dig('type'))
+              end
+              @hdo_info << Plugin::IIJ_COUPON_CHECKER::HDOInfo.new(regulation: hdo.dig('regulation'),
+                                                                   couponUse: hdo.dig('couponUse'),
+                                                                   iccid: hdo.dig('iccid'),
+                                                                   coupon: coupons,
+                                                                   hdoServiceCode: hdo.dig('hdoServiceCode'),
+                                                                   voice: hdo.dig('voice'),
+                                                                   sms: hdo.dig('sms'),
+                                                                   number: hdo.dig('number'))
+            end
 
             coupons = []
-            data.dig('coupon').each { |c|
+            data.dig('coupon').each do |c|
               coupons << Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
                                                                 expire: c.dig('expire'),
                                                                 type: c.dig('typo'))
-            }
+            end
             # バンドルクーポンや課金クーポン
             info << Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: data.dig('hddServiceCode'),
                                                                hdo_info: @hdo_info,
                                                                coupon: coupons,
                                                                plan: data.dig('plan'))
-          }
+          end
           info
         }
       end

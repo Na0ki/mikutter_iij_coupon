@@ -7,7 +7,7 @@ module Plugin::IIJ_COUPON_CHECKER
     field.bool    :regulation
     field.bool    :couponUse
     field.string  :iccid
-    field.has     :coupon, Plugin::IIJ_COUPON_CHECKER::Coupon
+    field.has     :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
     field.string  :hdoServiceCode
     field.bool    :voice
     field.bool    :sms

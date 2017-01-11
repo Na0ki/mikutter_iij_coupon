@@ -41,7 +41,7 @@
         "coupon": [
           {
             "volume": 10,
-            "expire": nil,
+            "expire": null,
             "type": "sim"
           }
         ],
@@ -95,7 +95,7 @@
         "coupon": [
           {
             "volume": 10,
-            "expire": nil,
+            "expire": null,
             "type": "sim"
           }
         ],

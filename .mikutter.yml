@@ -3,7 +3,7 @@ slug: :iij_coupon_checker
 depends:
   mikutter: 3.5.0
   plugin: []
-version: '0.0.1'
+version: '0.0.2'
 author: ahiru
 name: iij_coupon_checker
 description: check iij coupon

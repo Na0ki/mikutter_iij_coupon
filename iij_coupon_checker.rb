@@ -26,26 +26,19 @@ Plugin.create(:iij_coupon_checker) do
     # クーポンの取得
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       data.each { |d|
-        info = d.instance_variable_get(:@value)
-        msg = "hdoServiceCode: #{info[:hdo_info].hdoServiceCode}\n" +
-            "電話番号: #{info[:hdo_info].number}\n" +
-            "クーポン利用状況: #{info[:hdo_info].couponUse ? '使用中' : '未使用'}\n" +
-            "規制状態: #{info[:hdo_info].regulation ? '規制中' : '規制なし'}\n" +
-            "SIM内クーポン残量: #{info[:hdo_info].coupon.volume} [MB]"
-        # 投稿
-        post(msg)
+        d[:hdo_info].each { |info|
+          msg = "hdoServiceCode: #{d[:hddServiceCode]}\n" +
+              "電話番号: #{info[:number]}\n" +
+              "クーポン利用状況: #{info[:couponUse] ? '使用中' : '未使用'}\n" +
+              "規制状態: #{info[:regulation] ? '規制中' : '規制なし'}\n" +
+              "SIM内クーポン残量: #{info[:coupon].first.volume} [MB]"
+          # 投稿
+          post(msg)
+        }
       }
     }.trap { |e|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{e}"
       error e
-      return_code = JSON.parse(e.content).dig('returnCode')
-      # FIXME: trapブロックで認証に飛ばすのはあり？
-      # 書いてみたけど、未検証
-      if return_code == 'User Authorization Failure'
-        Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth.next { |server|
-          p server
-        }
-      end
     }
   }
 
@@ -110,12 +103,6 @@ Plugin.create(:iij_coupon_checker) do
               }.trap { |e|
                 activity :iij_coupon_checker, "クーポンの切り替えに失敗しました: #{e}"
                 error e
-                return_code = JSON.parse(e.content).dig('returnCode')
-                if return_code == 'User Authorization Failure'
-                  Plugin::IIJ_COUPON_CHECKER::CouponInfo.auth.next { |server|
-                    p server
-                  }
-                end
                 post("ステータスコード: #{e.status} (#{e.reason})\n詳細: #{return_code}")
               }
             }
@@ -123,7 +110,7 @@ Plugin.create(:iij_coupon_checker) do
         ensure
           dialog.destroy
         end
-      }
+      }.trap { |e| error e }
     }.trap { |e| error e }
   }
 
