@@ -30,8 +30,8 @@ Plugin.create(:iij_coupon_checker) do
           # 投稿
           post(_("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]") \
           % {
-              hdo: d[:hddServiceCode],
-              number: info[:number],
+              hdo: UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : d[:hddServiceCode],
+              number: UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : info[:number],
               couponUse: info[:couponUse] ? '使用中' : '未使用',
               regulation: info[:regulation] ? '規制中' : '規制なし',
               couponRemaining: info[:coupon].first.volume
@@ -89,7 +89,7 @@ Plugin.create(:iij_coupon_checker) do
         # ダイアログの結果に応じて処理を分ける
         case result
           when Gtk::Dialog::RESPONSE_OK
-            hdo = list.values[service.active]
+            hdo = UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : list.values[service.active]
             status = !!(switch.active == 0)
             # ダイアログを削除
             dialog.destroy
@@ -134,13 +134,14 @@ Plugin.create(:iij_coupon_checker) do
 
   # mikutter設定画面
   # @see http://mikutter.blogspot.jp/2012/12/blog-post.html
-  settings('iijクーポン') do
-    settings('デベロッパID') do
-      input 'デベロッパID', :iij_developer_id
+  settings(_('iijクーポン')) do
+    settings(_('デベロッパID')) do
+      input(_('デベロッパID'), :iij_developer_id)
     end
 
-    settings('トークン') do
-      input 'アクセストークン', :iij_access_token
+    settings('一般') do
+      input(_('アクセストークン'), :iij_access_token)
+      boolean(_('プレゼンテーションモード'), :iij_presentation_mode)
     end
   end
 
