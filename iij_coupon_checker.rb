@@ -27,11 +27,14 @@ Plugin.create(:iij_coupon_checker) do
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       data.each { |d|
         d[:hdo_info].each { |info|
-          msg = "hdoServiceCode: #{d[:hddServiceCode]}\n" +
-              "電話番号: #{info[:number]}\n" +
-              "クーポン利用状況: #{info[:couponUse] ? '使用中' : '未使用'}\n" +
-              "規制状態: #{info[:regulation] ? '規制中' : '規制なし'}\n" +
-              "SIM内クーポン残量: #{info[:coupon].first.volume} [MB]"
+          msg = _("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]") \
+          % {
+              hdo: d[:hddServiceCode],
+              number: info[:number],
+              couponUse: info[:couponUse] ? '使用中' : '未使用',
+              regulation: info[:regulation] ? '規制中' : '規制なし',
+              couponRemaining: info[:coupon].first.volume
+          }
           # 投稿
           post(msg)
         }
@@ -64,8 +67,8 @@ Plugin.create(:iij_coupon_checker) do
         dialog = Gtk::Dialog.new('クーポンを切り替える',
                                  $main_application_window,
                                  Gtk::Dialog::DESTROY_WITH_PARENT,
-                                 [ Gtk::Stock::OK, Gtk::Dialog::RESPONSE_OK ],
-                                 [ Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL ])
+                                 [Gtk::Stock::OK, Gtk::Dialog::RESPONSE_OK],
+                                 [Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL])
 
         dialog.vbox.add(Gtk::Label.new('回線の種類'))
         service_list = Gtk::ComboBox.new(true)
@@ -75,7 +78,7 @@ Plugin.create(:iij_coupon_checker) do
         dialog.vbox.add(Gtk::Label.new('切り替え'))
         switch = Gtk::ComboBox.new(true)
         dialog.vbox.add(switch)
-        status_list.each { |s| switch.append_text(s)}
+        status_list.each { |s| switch.append_text(s) }
 
         service_list.set_active(0)
         switch.set_active(0)
