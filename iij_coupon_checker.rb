@@ -26,15 +26,18 @@ Plugin.create(:iij_coupon_checker) do
     # クーポンの取得
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       data.each do |d|
+        bundle = 0
+        d[:coupon].each { |coupon| bundle += coupon[:volume].to_i if coupon[:type] == 'bundle' }
         d[:hdo_info].each do |info|
           # 投稿
-          post(_("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]") \
+          post(_("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]\nバンドルクーポン残量: %{bundle} [MB]") \
           % {
               hdo: UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : d[:hddServiceCode],
               number: UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : info[:number],
               couponUse: info[:couponUse] ? '使用中' : '未使用',
               regulation: info[:regulation] ? '規制中' : '規制なし',
-              couponRemaining: info[:coupon].first.volume
+              couponRemaining: info[:coupon].first.volume,
+              bundle: bundle
           })
         end
       end
