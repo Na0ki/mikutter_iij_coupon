@@ -22,28 +22,27 @@ Plugin.create(:iij_coupon_checker) do
           name: 'クーポンの確認をする',
           condition: lambda { |_| true },
           visible: true,
-          role: :timeline) { |_|
+          role: :timeline) do |_|
     # クーポンの取得
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
-      data.each { |d|
-        d[:hdo_info].each { |info|
-          msg = _("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]") \
+      data.each do |d|
+        d[:hdo_info].each do |info|
+          # 投稿
+          post(_("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]") \
           % {
               hdo: d[:hddServiceCode],
               number: info[:number],
               couponUse: info[:couponUse] ? '使用中' : '未使用',
               regulation: info[:regulation] ? '規制中' : '規制なし',
               couponRemaining: info[:coupon].first.volume
-          }
-          # 投稿
-          post(msg)
-        }
-      }
+          })
+        end
+      end
     }.trap { |e|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{e}"
       error e
     }
-  }
+  end
 
 
   # クーポンの利用オン・オフ切り替え
@@ -51,15 +50,15 @@ Plugin.create(:iij_coupon_checker) do
           name: 'クーポンの使用を変更',
           condition: lambda { |_| true },
           visible: true,
-          role: :timeline) { |_|
+          role: :timeline) do |_|
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       hdo_list = Hash.new
-      data.each { |d|
+      data.each do |d|
         info = d.instance_variable_get(:@value)
         code = info[:hdo_info].hdoServiceCode
         status = info[:hdo_info].couponUse
         hdo_list[code] = status
-      }
+      end
       hdo_list
     }.next { |list|
       Delayer.new {
@@ -115,7 +114,7 @@ Plugin.create(:iij_coupon_checker) do
         end
       }.trap { |e| error e }
     }.trap { |e| error e }
-  }
+  end
 
 
   on_iij_auth_success do
