@@ -17,7 +17,7 @@ module Plugin::IIJ_COUPON_CHECKER
 
     # モデル
     field.string :hddServiceCode
-    field.has :hdoInfo, [Plugin::IIJ_COUPON_CHECKER::HDOInfo]
+    field.has :hdo_info, [Plugin::IIJ_COUPON_CHECKER::HDOInfo]
     field.has :coupon, [Plugin::IIJ_COUPON_CHECKER::Coupon]
     field.string :plan
 
@@ -86,6 +86,7 @@ module Plugin::IIJ_COUPON_CHECKER
           Delayer::Deferred.fail(response) unless (response&.status_code == 200)
 
           info = []
+          # JSON.parse(File.open(File.join(__dir__, '..', 'test.json')).read)['couponInfo'].each do |data|
           JSON.parse(response.content)['couponInfo'].each do |data|
             @hdo_info = []
             data.dig('hdoInfo').each do |hdo|
@@ -105,14 +106,13 @@ module Plugin::IIJ_COUPON_CHECKER
                                                                    sms: hdo.dig('sms'),
                                                                    number: hdo.dig('number'))
             end
-
+            # バンドルクーポンや課金クーポン
             coupons = []
             data.dig('coupon').each do |c|
               coupons << Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
                                                                 expire: c.dig('expire'),
                                                                 type: c.dig('typo'))
             end
-            # バンドルクーポンや課金クーポン
             info << Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: data.dig('hddServiceCode'),
                                                                hdo_info: @hdo_info,
                                                                coupon: coupons,
