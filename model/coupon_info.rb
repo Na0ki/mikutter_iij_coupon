@@ -111,7 +111,7 @@ module Plugin::IIJ_COUPON_CHECKER
             data.dig('coupon').each do |c|
               coupons << Plugin::IIJ_COUPON_CHECKER::Coupon.new(volume: c.dig('volume'),
                                                                 expire: c.dig('expire'),
-                                                                type: c.dig('typo'))
+                                                                type: c.dig('type'))
             end
             info << Plugin::IIJ_COUPON_CHECKER::CouponInfo.new(hddServiceCode: data.dig('hddServiceCode'),
                                                                hdo_info: @hdo_info,
