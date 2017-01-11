@@ -29,10 +29,11 @@ module Plugin::IIJ_COUPON_CHECKER
       def auth
         Thread.new {
           Delayer::Deferred.fail('Developer ID not defined') unless UserConfig['iij_developer_id']
-          query = {:response_type => 'token',
-                   :client_id => UserConfig['iij_developer_id'],
-                   :state => 'mikutter_iij_coupon_checker',
-                   :redirect_uri => 'http://localhost:8080/'
+          query = {
+              :response_type => 'token',
+              :client_id => UserConfig['iij_developer_id'],
+              :state => 'mikutter_iij_coupon_checker',
+              :redirect_uri => 'http://localhost:8080/'
           }.to_hash
           # リクエスト
           Plugin.call(:open, "https://api.iijmio.jp/mobile/d/v1/authorization/?#{query.map { |k, v| "#{k}=#{v}" }.join('&')}")
@@ -124,12 +125,12 @@ module Plugin::IIJ_COUPON_CHECKER
 
       # クーポンの利用状態の切り替え（On/Off）
       # @param [String] hdo hdoServiceCode
-      # @param [Bool] is_valid クーポンのオン・オフのフラグ
-      def switch(hdo, is_valid)
+      # @param [Bool] flag クーポンのオン・オフのフラグ
+      def switch(hdo, flag)
         Thread.new {
           Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
           client = HTTPClient.new
-          data = {:couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => is_valid}]}]}.to_hash
+          data = {:couponInfo => [{:hdoInfo => [{:hdoServiceCode => hdo, :couponUse => flag}]}]}.to_hash
           client.default_header = {
               :'Content-Type' => 'application/json',
               :'X-IIJmio-Developer' => UserConfig['iij_developer_id'],
