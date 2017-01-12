@@ -70,8 +70,8 @@ module Plugin::IIJ_COUPON_CHECKER
       # @return [Delayer::Deferred::Deferredable] クーポンのモデルを引数にcallbackするDeferred
       # ステータスコードについてはAPIレファレンスを参照すること {@see https://www.iijmio.jp/hdd/coupon/mioponapi.jsp}
       def get_info
-        Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
         Thread.new {
+          Delayer::Deferred.fail("デベロッパーIDが存在しません\nIDを設定してください\n") unless UserConfig['iij_developer_id']
           client = HTTPClient.new
           client.default_header = {
               :'Content-Type' => 'application/json',
