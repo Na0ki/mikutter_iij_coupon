@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 require 'json'
-
 require_relative 'model'
 
 Plugin.create(:iij_coupon_checker) do
@@ -12,17 +11,15 @@ Plugin.create(:iij_coupon_checker) do
     user = Mikutter::System::User.new(idname: 'iijmio_coupon',
                                       name: 'Coupon Checker',
                                       icon: Skin['icon.png'])
-    timeline(:home_timeline) << Mikutter::System::Message.new(user: user,
+    timeline(:iij_coupon_checker_tab_timeline) << Mikutter::System::Message.new(user: user,
                                                               description: msg)
   end
 
 
-  # クーポン確認コマンド
-  command(:check_iij_coupon,
-          name: 'クーポンの確認をする',
-          condition: lambda { |_| true },
-          visible: true,
-          role: :timeline) do |_|
+  # クーポン情報を整形し、契約ごとに配列に格納して返す
+  # @return [Delayer::Deferred::Deferrable]
+  def get_coupon_info
+    infos = []
     # クーポンの取得
     Plugin::IIJ_COUPON_CHECKER::CouponInfo.get_info.next { |data|
       data.each do |d|
@@ -30,7 +27,7 @@ Plugin.create(:iij_coupon_checker) do
         d[:coupon].each { |coupon| bundle += coupon[:volume].to_i if coupon[:type] == 'bundle' }
         d[:hdo_info].each do |info|
           # 投稿
-          post(_("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]\nバンドルクーポン残量: %{bundle} [MB]") \
+          infos << _("hdoServiceCode: %{hdo}\n電話番号: %{number}\nクーポン利用状況: %{couponUse}\n規制状態: %{regulation}\nSIM内クーポン残量: %{couponRemaining} [MB]\nバンドルクーポン残量: %{bundle} [MB]") \
           % {
               hdo: UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : d[:hddServiceCode],
               number: UserConfig[:iij_presentation_mode] ? '░▒▓▓▒░░▒▓▓▒░' : info[:number],
@@ -38,9 +35,42 @@ Plugin.create(:iij_coupon_checker) do
               regulation: info[:regulation] ? '規制中' : '規制なし',
               couponRemaining: info[:coupon].first.volume,
               bundle: bundle
-          })
+          }
         end
       end
+      infos
+    }
+  end
+
+
+  # 初回起動時のみ呼ばれる
+  def on_create
+    tab(:iij_coupon_checker_tab) do
+      set_deletable true
+      self.name = 'くーぽん'
+      timeline :iij_coupon_checker_tab_timeline
+    end
+    get_coupon_info.next { |infos|
+      infos.each { |info| post(info) }
+    }.trap { |e|
+      activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{e}"
+      error e
+    }
+  end
+
+  on_create
+
+
+  # クーポン確認コマンド
+  command(:check_iij_coupon,
+          name: 'クーポンの確認をする',
+          condition: lambda { |_| true },
+          visible: false,
+          icon: File.join(__dir__, 'resource', 'check.png'),
+          role: :window) do |_|
+    # クーポンの取得
+    get_coupon_info.next { |infos|
+      infos.each { |info| post(info) }
     }.trap { |e|
       activity :iij_coupon_checker, "クーポン情報の取得に失敗しました: #{e}"
       error e
@@ -122,12 +152,22 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
-  on_iij_auth_success do
+  on_iij_coupon_auth_success do
     # TODO: implement
   end
 
 
-  on_iij_auth_failure do
+  on_iij_coupon_auth_failure do
+    # TODO: implement
+  end
+
+
+  on_iij_coupon_check do
+    # TODO: implement
+  end
+
+
+  on_iij_coupon_switch do |id, flag|
     # TODO: implement
   end
 

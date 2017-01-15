@@ -32,3 +32,10 @@ mikutterの設定で「アクセストークン」を設定する.
 * トイレ  
     本ソースの一部はトイレで書かれたウンコードになります.  
     お腹事情を支えてくれたトイレに感謝
+
+# ライセンス
+* mikutter_iij_coupon  
+[MIT LICENSE](/LICENSE)
+
+* Material icons  
+[Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
