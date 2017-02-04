@@ -2,6 +2,11 @@
 iij couponのチェックとかできるやつ（を目指してる）  
 認証部分はまだちゃんと手をつけてないので適当です
 
+# インストール方法
+```
+$ mkdir -p ~/.mikutter/plugin && cd ~/.mikutter/plugin/
+$ git clone https://github.com/Na0ki/mikutter_iij_coupon iij_coupon_checker
+```
 
 # 使い方（暫定）
 1. iijのデベロッパー登録をする  

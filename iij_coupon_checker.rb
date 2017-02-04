@@ -167,7 +167,7 @@ Plugin.create(:iij_coupon_checker) do
   end
 
 
-  on_iij_coupon_switch do |id, flag|
+  on_iij_coupon_switch do |_id, _flag|
     # TODO: implement
   end
 
